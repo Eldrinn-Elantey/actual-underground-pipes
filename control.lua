@@ -71,9 +71,6 @@ script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
   local quality = player.cursor_ghost and player.cursor_ghost.quality or 
     player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.quality or nil
 
-  -- Return early if storage doesn't exist yet
-  if not storage.tomwub[event.player_index] then return end
-
   local old_item = storage.tomwub[event.player_index].item
   local old_count = storage.tomwub[event.player_index].count
   local old_quality = storage.tomwub[event.player_index].quality
@@ -411,7 +408,7 @@ function handle(event)
       end
     end
   
-    if event.player_index and storage.tomwub[event.player_index] then
+    if event.player_index then
       local player = game.get_player(event.player_index)
 
       -- if player just placed last item, then signal to script to update hand again
