@@ -60,9 +60,7 @@ end)
 -- if ghost underground selected, check if it needs refilling
 ---@param event EventData.on_player_cursor_stack_changed
 script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
-
-  local player = game.players[event.player_index]
-  if not player then return end
+  local player = game.get_player(event.player_index)
 
   -- if in remote view do nothing
   if player.controller_type == defines.controllers.remote then return end
@@ -70,21 +68,18 @@ script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
   local item = player.cursor_ghost and player.cursor_ghost.name.name or
     player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.name or nil
   local count = not player.cursor_ghost and player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.count or nil
-  local quality = player.cursor_ghost and player.cursor_ghost.quality or 
+  local quality = player.cursor_ghost and player.cursor_ghost.quality or
     player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.quality or nil
 
-  -- if the player somehow broke this... give up
-  if storage.tomwub[event.player_index] == nil then goto continue end
+  storage.tomwub[event.player_index] = storage.tomwub[event.player_index] or {}
 
-  local old_item = storage.tomwub[event.player_index].item
-  local old_count = storage.tomwub[event.player_index].count
-  local old_quality = storage.tomwub[event.player_index].quality
+  local old_item = storage.tomwub[event.player_index].item or ""
+  local old_count = storage.tomwub[event.player_index].count or 0
+  local old_quality = storage.tomwub[event.player_index].quality or ""
 
-  -- if just swapped using custom key, go to end
-  if old_count == -2 then goto continue end
-
-  -- was previously holding item but placed last one, signaled by on_built_entity OR just pipetted a tomwub pipe (creating ghost item)
-  if player.cursor_ghost and old_count == -1 then
+  -- if just swapped using custom key (old_count == -2), will skip to end
+  -- was previously holding item but placed last one, signaled by on_built_entity OR just pipetted an underground pipe (creating ghost item)
+  if old_count == -1 and player.cursor_ghost then
 
     -- get count and remove from inventory
     local removed = player.get_main_inventory().remove{
@@ -93,25 +88,25 @@ script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
       quality = old_quality
     }
 
-    -- if none removed
-    if removed == 0 then goto continue end
+    -- only continue if some were found
+    if removed ~= 0 then
+      -- find open slot for hand to go
+      local _, stack = player.get_main_inventory().find_empty_stack()
 
-    -- find open slot for hand to go
-    local _, stack = player.get_main_inventory().find_empty_stack()
+      -- put into cursor
+      player.cursor_stack.set_stack {
+        name = player.cursor_ghost.name.name,
+        count = removed,
+        quality = quality
+      }
 
-    -- put into cursor
-    player.cursor_stack.set_stack {
-      name = player.cursor_ghost.name.name,
-      count = removed,
-      quality = quality
-    }
-
-    -- set hand location to preserve place for player to put items
-    player.hand_location = {
-      inventory = player.get_main_inventory().index,
-      slot = stack
-    }
-  elseif old_count > 0 and old_item:sub(1,7) == "tomwub-" and item ~= old_item then
+      -- set hand location to preserve place for player to put items
+      player.hand_location = {
+        inventory = player.get_main_inventory().index,
+        slot = stack
+      }
+    end
+  elseif old_count > 0 and item ~= old_item and old_item:sub(1,7) == "tomwub-" then
     -- was previously holding item, just put it away so put pipes back into inventory
 
     -- get amount added to inventory
@@ -151,7 +146,7 @@ script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
 
       return -- return early, we don't want to run other code
     end
-  elseif not player.is_cursor_empty() and old_count < -3 and item:sub(1,7) == "tomwub-" then
+  elseif old_count < -3 and not player.is_cursor_empty() and item:sub(1,7) == "tomwub-" then
 
     local amount_removed = player.controller_type == defines.controllers.editor and -3 - old_count or player.get_main_inventory().remove{
       name = item:sub(8, -1),
@@ -188,8 +183,6 @@ script.on_event(defines.events.on_player_cursor_stack_changed, function (event)
     }
   end
 
-  ::continue:: -- something skipped to end
-
   -- set the previous item and count
   storage.tomwub[event.player_index] = {
     item = item,
@@ -224,8 +217,8 @@ local function handle(event)
     end
   end
 
-  local player = event.player_index and game.players[event.player_index]
-  if not player or not storage.tomwub[player.index] then return end
+  if not event.player_index or not storage.tomwub[event.player_index] then return end
+  local player = game.get_player(event.player_index)
 
   -- if player just placed last item, then signal to script to update hand again
   if player.is_cursor_empty() and storage.tomwub[player.index].item and storage.tomwub[player.index].item:sub(1,7) == "tomwub-" and storage.tomwub[player.index].count == 1 then
@@ -247,8 +240,7 @@ script.on_event(defines.events.script_raised_revive, handle, event_filter)
 -- swap between aboveground and belowground layers
 script.on_event("tomwub-swap-layer", function(event)
 
-  local player = game.players[event.player_index]
-  if not player then return end
+  local player = game.get_player(event.player_index)
 
   local item = player.cursor_ghost and player.cursor_ghost.name.name or
     player.cursor_stack and player.cursor_stack.valid_for_read and player.cursor_stack.name or ""
@@ -261,9 +253,6 @@ script.on_event("tomwub-swap-layer", function(event)
   -- yes it works no i dont know why
   -- also man .valid_for_read is so powerful
   -- it's hopefully a valid item, so do a little switcheroo
-
-  -- if the player somehow broke this... give up
-  if storage.tomwub[event.player_index] == nil then goto continue end
 
   -- holding underground, switch to pipe
   if item:sub(1,7) == "tomwub-" then
@@ -316,8 +305,6 @@ script.on_event("tomwub-swap-layer", function(event)
     end
   end
 
-  ::continue:: -- something skipped to end
-
   -- set the previous item and count
   storage.tomwub[event.player_index] = {
     item = item,
@@ -339,8 +326,6 @@ end)
 if not script.active_mods["FluidMustFlow"] or not settings.startup["fmf-enable-duct-auto-join"].value then
   return
 end
-
--- The entire file below this point is copied in src/prototypes/tips-and-tricks.lua for the drag building simulation
 
 --- Calculates the midpoint between two positions.
 --- @param pos_1 MapPosition
@@ -415,8 +400,8 @@ function handle(event)
       end
     end
   
-    local player = event.player_index and game.players[event.player_index]
-    if player then
+    if event.player_index then
+      local player = game.get_player(event.player_index)
 
       -- if player just placed last item, then signal to script to update hand again
       if player.is_cursor_empty() and storage.tomwub[player.index].item and storage.tomwub[player.index].item:sub(1,7) == "tomwub-" and storage.tomwub[player.index].count == 1 then
