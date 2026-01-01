@@ -2,7 +2,7 @@ local xutil = require "util"
 
 local tags = {}
 
-local underground_total_resistances = {}
+_G.underground_total_resistances = {}
 
 for prototype in pairs(data.raw["damage-type"]) do
   underground_total_resistances[#underground_total_resistances+1] = {

@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.11
+Date: 2026-01-01
+  Bugfixes:
+    - Fixed Flow Control pipes being able to take damage
+    - Fixed that Flow Control pipes could go under pipe to grounds
+---------------------------------------------------------------------------------------------------
 Version: 1.0.10
 Date: 2025-12-29
   Changes:

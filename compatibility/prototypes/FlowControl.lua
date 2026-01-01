@@ -8,11 +8,7 @@ local pipes = {
   "pipe-straight"
 }
 
-local underground_collision_mask = data.raw["pipe-to-ground"]["pipe-to-ground"].fluid_box.pipe_connections[2].underground_collision_mask or {layers = {}}
 local tag = data.raw["pipe-to-ground"]["pipe-to-ground"].fluid_box.pipe_connections[2].connection_category
-
--- they can only be placed inside the map
-underground_collision_mask.layers["out_of_map"] = true
 
 -- solve the underground pipes
 for _, pipe in pairs(pipes) do
@@ -39,9 +35,9 @@ for _, pipe in pairs(pipes) do
       pictures = table.deepcopy(pipe.pictures),
       collision_box = pipe.collision_box,
       selection_box = pipe.selection_box,
-      collision_mask = underground_collision_mask or { layers = {} },
+      collision_mask = data.raw.pipe["tomwub-pipe"].collision_mask,
       flags = {"not-upgradable", "player-creation", "placeable-neutral"},
-      resistances = underground_total_resistances,
+      resistances = _G.underground_total_resistances,
       window_bounding_box = pipe.window_bounding_box,
       flow_length_in_ticks = pipe.flow_length_in_ticks,
       icon_draw_specification = table.deepcopy(pipe.icon_draw_specification),
@@ -51,14 +47,9 @@ for _, pipe in pairs(pipes) do
       is_military_target = false
     }
   }
-  tomwub_pipe = data.raw["storage-tank"]["tomwub-" .. p]
+  local tomwub_pipe = data.raw["storage-tank"]["tomwub-" .. p]
   for _, pipe_connection in pairs(tomwub_pipe.fluid_box.pipe_connections) do
     pipe_connection.connection_category = tag
-  end
-
-  -- set the collision mask to the connection_category collected earlier
-  if data.raw.tile["out-of-map"] then
-    underground_collision_mask.layers["out_of_map"] = true
   end
 
   -- shift everything down
